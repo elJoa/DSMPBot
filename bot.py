@@ -6,9 +6,9 @@ import asyncio
 from discord.ext.commands import Bot
 
 client = Bot(command_prefix=constantes.PREFIX)
-VERSION = '0.2.0'
+VERSION = '0.6.0'
 servidor = minestat.MineStat(constantes.IP, 25565)
-estabaON = True
+estabaON = False
 canalOnOff = None
 
 
@@ -27,7 +27,8 @@ async def ver_estado_servidor():
 			if not obtener_estaba_on():
 				await canalOnOff.send('¡El servidor está ON!')
 				await establecer_estaba_on(True)
-		else:
+
+		if not servidor.online:
 			if obtener_estaba_on():
 				await canalOnOff.send('¡El servidor está OFF!')
 				await establecer_estaba_on(False)
@@ -110,5 +111,48 @@ async def version(context):
 	version.set_footer(text='Comando solicitado por ' + str(context.author))
 	await context.message.channel.send(embed=version)
 
+@client.command(name='dogedice', pass_context=True)
+async def dogedice(context, *, mensaje):
+	await context.message.delete()
+	await context.message.channel.send(mensaje)
+
+@client.command(name='limpiar', pass_context=True)
+async def limpiar(context, numero):
+	if context.message.author.id in constantes.ADMINISTRADORES:
+		numero = int(numero)
+
+		if numero > 100:
+			await context.message.delete()
+			error = discord.Embed(title='¡Vaya!', description='¡El valor que colocaste es muy grande y probablemente iba a causar un error!', color=0xCC0000)
+			mensaje = await context.message.channel.send(embed=error)
+			await asyncio.sleep(2)
+			await mensaje.delete()
+			return
+
+		await context.message.delete()
+		await context.message.channel.purge(limit=numero)
+
+		if numero != 1:
+			embed = discord.Embed(title='Fui utilizado para:', description='Eliminar {} mensajes.'.format(numero), color=0x00FF00)
+		else:
+			embed = discord.Embed(title='Fui utilizado para:', description='Eliminar {} mensaje.'.format(numero), color=0x00FF00)
+
+		mensaje = await context.message.channel.send(embed=embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+	else:
+		await context.message.delete()
+		error = discord.Embed(title='¡Vaya!', description='¡No tienes permisos para usar este comando, pequeño curioso!', color=0xCC0000)
+		mensaje = await context.message.channel.send(embed=error)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+@limpiar.error
+async def limpiar_error(context, e):
+	await context.message.delete()
+	error = discord.Embed(title='¡Vaya!', description='¡No colocaste ningún argumento!', color=0xCC0000)
+	mensaje = await context.message.channel.send(embed=error)
+	await asyncio.sleep(2)
+	await mensaje.delete()
 
 client.run(constantes.TOKEN)
