@@ -1,16 +1,15 @@
 import platform
 import discord
-import minestat  # ¡Gracias a los creadores de minestat! Sin ellos este bot no existiría.
 import constantes
 import asyncio
 import paramiko
+import requests
 from discord.ext.commands import Bot
 
 client = Bot(command_prefix=constantes.PREFIX)
-servidor = minestat.MineStat(constantes.IP, 25565)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-VERSION = '0.9.0'  # Falta el poder loopear los mensajes de info en #on-off para la 1.0.0
+VERSION = '0.9.5'  # Falta el poder loopear los mensajes de info en #on-off para la 1.0.0
 
 
 @client.event
@@ -24,7 +23,7 @@ async def on_ready():
 
 @client.command(name='reiniciar', pass_context=True)
 async def reiniciar(context):
-	if context.message.author.id in constantes.ADMINISTRADORES_PLUS:
+	if context.message.author.id in constantes.PERMISOS_REINICIO:
 		try:
 			ssh.connect(constantes.SSH_HOST, port=22, username=constantes.SSH_USER, password=constantes.SSH_PASS)
 			ssh.exec_command('systemctl restart dogesthetic')
@@ -52,23 +51,29 @@ async def reiniciar(context):
 @client.command(name='estado', pass_context=True)
 async def estado(context):
 	try:
+		# Obtener datos
 		ssh.connect(constantes.SSH_HOST, port=22, username=constantes.SSH_USER, password=constantes.SSH_PASS)
 		(sshin, sshout, ssherr) = ssh.exec_command('systemctl status dogesthetic | grep -i Active')
 		resultado = sshout.read().decode('utf8').strip()
 
+		resultado_sv = requests.get("https://mcapi.us/server/status?ip={}".format(constantes.IP))
+		info_sv = resultado_sv.json()
+
+		# Mostrar datos
 		estado_servicio = 'INACTIVO'
 		estado_servidor = 'INACTIVO'
 
 		if 'running' in resultado:
 			estado_servicio = 'ACTIVO'
 
-		if servidor.online:
+		if info_sv['online']:
 			estado_servidor = 'ACTIVO'
 
-		if 'ACTIVO' in estado_servidor:
+		if estado_servidor == 'ACTIVO':
 			color_embed = 0x00FF00
 		else:
 			color_embed = 0xCC0000
+
 		estado_embed = discord.Embed(color=color_embed)
 		estado_embed.set_thumbnail(url='https://i.imgur.com/j39vdJs.png')
 
@@ -228,7 +233,7 @@ async def version(context):
 		value='{} {}'.format(platform.system(), platform.release()),
 		inline=False
 	)
-	version_embed.add_field(name='Repositorio de GitHub:', value='<https://github.com/elJoa/Dogesthetic-Bot>')
+	version_embed.add_field(name='Repositorio de GitHub:', value='<https://github.com/elJoa/DSMPBot>')
 	version_embed.set_footer(text='Comando solicitado por ' + str(context.author))
 	await context.message.channel.send(embed=version_embed)
 
@@ -288,7 +293,7 @@ async def limpiar(context, numero):
 
 
 @limpiar.error
-async def limpiar_error(context, e):
+async def limpiar_error(context):
 	await context.message.delete()
 	error_embed = discord.Embed(
 		title='¡Vaya!',
