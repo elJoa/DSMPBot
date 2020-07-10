@@ -1,4 +1,6 @@
 import platform
+import re
+
 import discord
 import constantes
 import asyncio
@@ -9,8 +11,7 @@ from discord.ext.commands import Bot
 client = Bot(command_prefix=constantes.PREFIX)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-servidor = minestat.MineStat(constantes.IP, 25565)
-VERSION = '1.0'
+VERSION = '1.1'
 estaba_on = True
 
 
@@ -25,11 +26,20 @@ def obtener_estaba_on():
 
 
 def footer_embed(context):
-	return 'Comando solicitado por {}. \nDSMPBot Ver: {}'.format(str(context.author), VERSION)
+	return 'Comando solicitado por {}. \nDSMPBot v{}'.format(str(context.author), VERSION)
+
+
+async def conectar_ssh(comando):
+	ssh.connect(constantes.SSH_HOST, port=22, username=constantes.SSH_USER, password=constantes.SSH_PASS)
+	(sshin, sshout, ssherr) = ssh.exec_command(comando)
+	resultado = sshout.read().decode('utf8').strip()
+	ssh.close()
+	return resultado
 
 
 async def ver_estado_servidor_loop(canal_on_off):
 	while True:
+		servidor = minestat.MineStat(constantes.IP, 25565)
 		if servidor.motd is not None:
 			if not obtener_estaba_on():
 				await canal_on_off.send('¡El servidor está ON!')
@@ -39,7 +49,7 @@ async def ver_estado_servidor_loop(canal_on_off):
 				await canal_on_off.send('¡El servidor está OFF!')
 				establecer_estaba_on(False)
 		
-		await asyncio.sleep(6)
+		await asyncio.sleep(15)
 
 
 @client.event
@@ -51,6 +61,33 @@ async def on_ready():
 	print('Logueado como {}'.format(client.user))
 	print('Versión de Discord.py: {}'.format(discord.__version__))
 	print('-----------------------------------------------')
+
+
+@client.command(name='backup', pass_context=True)
+async def backup(context):
+	if context.message.author.id in constantes.PERMISOS_BACKUP:
+		try:
+			ssh.connect(constantes.SSH_HOST, port=22, username=constantes.SSH_USER, password=constantes.SSH_PASS)
+			ssh.exec_command('cp /home/DSMP_p2/world /home/backup/world -r')
+			
+			estado_embed = discord.Embed(
+				description='{} está haciendo un backup al servidor.'.format(context.author),
+				color=0x00FF00
+			)
+			
+			await context.message.channel.send(embed=estado_embed)
+		finally:
+			ssh.close()
+	else:
+		await context.message.delete()
+		error = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error)
+		await asyncio.sleep(2)
+		await mensaje.delete()
 
 
 @client.command(name='reiniciar', pass_context=True)
@@ -84,23 +121,24 @@ async def reiniciar(context):
 async def estado(context):
 	try:
 		# Obtener datos
-		ssh.connect(constantes.SSH_HOST, port=22, username=constantes.SSH_USER, password=constantes.SSH_PASS)
-		(sshin, sshout, ssherr) = ssh.exec_command('systemctl status dogesthetic | grep -i Active')
-		resultado = sshout.read().decode('utf8').strip()
+		servidor = minestat.MineStat(constantes.IP, 25565)
+		resultado_estado = await conectar_ssh('systemctl status dogesthetic | grep -i Active')
+		resultado_peso = await conectar_ssh("du -sh /home/DSMP_p2/world")
+		resultado_peso = re.sub("/.*$", "", resultado_peso).replace(',', '.')
 		
 		# Mostrar datos
 		estado_servicio = 'INACTIVO'
 		estado_servidor = 'INACTIVO'
-		estado_jugadores = 0
+		estado_jugadores = '0/{}'.format(servidor.max_players)
 		
-		if 'running' in resultado:
+		if 'running' in resultado_estado:
 			estado_servicio = 'ACTIVO'
 		
 		if servidor.version is not None:
 			estado_servidor = 'ACTIVO'
 		
 		if servidor.current_players is not None:
-			estado_jugadores = servidor.current_players
+			estado_jugadores = '{}/{}'.format(servidor.current_players, servidor.max_players)
 		
 		if estado_servidor == 'ACTIVO':
 			color_embed = 0x00FF00
@@ -119,6 +157,12 @@ async def estado(context):
 		estado_embed.add_field(
 			name='Estado del servidor:',
 			value=estado_servidor,
+			inline=False
+		)
+		
+		estado_embed.add_field(
+			name='Tamaño del mundo:',
+			value=resultado_peso,
 			inline=False
 		)
 		
