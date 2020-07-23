@@ -12,7 +12,7 @@ from mcstatus import MinecraftServer
 client = Bot(command_prefix=constantes.PREFIX)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-VERSION = '1.4'
+VERSION = '1.5'
 estaba_on = True
 
 
@@ -296,6 +296,22 @@ async def comandos(context):
 	comandos_embed.add_field(
 		name='Mi latencia:',
 		value='$latencia'
+	)
+	comandos_embed.add_field(
+		name='Proyectos activos:',
+		value='$proyectos'
+	)
+	comandos_embed.add_field(
+		name='Agregar un nuevo proyecto:',
+		value='$añadirproyecto "Grinder doble" "Este proyecto da muchas cosas." "DrPuc, Poporonga y Naltrex." "Alta."'
+	)
+	comandos_embed.add_field(
+		name='Terminar un proyecto:',
+		value='$terminarproyecto "Grinder doble"'
+	)
+	comandos_embed.add_field(
+		name='Eliminar _todos_ los proyectos:',
+		value='$limpiarproyectos'
 	)
 	comandos_embed.set_footer(text=footer_embed(context))
 	await context.message.channel.send(embed=comandos_embed)
