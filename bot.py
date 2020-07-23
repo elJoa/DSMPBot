@@ -68,6 +68,33 @@ async def on_ready():
 	print('-----------------------------------------------')
 
 
+@client.command(name='limpiarproyectos', pass_context=True)
+async def limpiarproyectos(context):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
+	
+	if administrador_proyectos in context.author.roles:
+		open("proyectos_activos.dsmp", "w").write(
+			json.dumps({"proyectos": []})
+		)
+		
+		resultado_embed = discord.Embed(
+			title='¡Los proyectos han sido limpiados!',
+			description='Todos los proyectos fueron eliminados.',
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
 @client.command(name='terminarproyecto', pass_context=True)
 async def terminarproyecto(context, *, argumento):
 	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
@@ -77,7 +104,7 @@ async def terminarproyecto(context, *, argumento):
 		obj = json.load(open('proyectos_activos.dsmp'))['proyectos']
 		
 		for i in range(len(obj)):
-			if obj[i]["nombre"] == nombre:
+			if obj[i]['nombre'] == nombre:
 				obj.pop(i)
 				break
 		
