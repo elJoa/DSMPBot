@@ -431,6 +431,22 @@ async def comandos(context):
 		name='Mi latencia:',
 		value='$latencia'
 	)
+	comandos_embed.add_field(
+		name='Proyectos activos:',
+		value='$proyectos'
+	)
+	comandos_embed.add_field(
+		name='Añadir un nuevo proyecto:',
+		value='$añadirproyecto "Grinder doble" "Este proyecto dará mucha pólvora." "DrPuc, Poporonga y Naltrex." "Alta."'
+	)
+	comandos_embed.add_field(
+		name='Terminar un proyecto:',
+		value='$terminarproyecto "Grinder doble"'
+	)
+	comandos_embed.add_field(
+		name='Limpiar todos los proyectos:',
+		value='$limpiarproyectos'
+	)
 	comandos_embed.set_footer(text=footer_embed(context))
 	await context.message.channel.send(embed=comandos_embed)
 
