@@ -12,7 +12,7 @@ from mcstatus import MinecraftServer
 client = Bot(command_prefix=constantes.PREFIX, case_insensitive=True)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-VERSION = '1.5-dev'
+VERSION = '1.5'
 estaba_on = True
 
 
