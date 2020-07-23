@@ -68,6 +68,41 @@ async def on_ready():
 	print('-----------------------------------------------')
 
 
+@client.command(name='terminarproyecto', pass_context=True)
+async def terminarproyecto(context, *, argumento):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
+	
+	if administrador_proyectos in context.author.roles:
+		nombre = argumento.split('"')[1]
+		obj = json.load(open('proyectos_activos.dsmp'))['proyectos']
+		
+		for i in range(len(obj)):
+			if obj[i]["nombre"] == nombre:
+				obj.pop(i)
+				break
+		
+		open("proyectos_activos.dsmp", "w").write(
+			json.dumps({"proyectos": obj})
+		)
+		
+		resultado_embed = discord.Embed(
+			title='¡Proyecto terminado!',
+			description='El proyecto {} ha sido terminado.'.format(nombre),
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
 @client.command(name='añadirproyecto', pass_context=True)
 async def añadirproyecto(context, *, argumentos):
 	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
@@ -501,4 +536,17 @@ async def añadirproyecto_error(context, mensaje):
 	await asyncio.sleep(15)
 	await mensaje.delete()
 	
+	
+@terminarproyecto.error
+async def terminarproyecto_error(context, mensaje):
+	await context.message.delete()
+	error_embed = discord.Embed(
+		title='¡Vaya!',
+		description='Uso correcto del comando: $terminarproyecto (Nombre del proyecto).\n\n$terminarproyecto "Granja de guardianes"',
+		color=0xCC0000
+	)
+	mensaje = await context.message.channel.send(embed=error_embed)
+	await asyncio.sleep(15)
+	await mensaje.delete()
+
 client.run(constantes.TOKEN)
