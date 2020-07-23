@@ -68,6 +68,49 @@ async def on_ready():
 	print('-----------------------------------------------')
 
 
+@client.command(name='añadirproyecto', pass_context=True)
+async def añadirproyecto(context, *, argumentos):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
+	
+	if administrador_proyectos in context.author.roles:
+		datos_proyecto = argumentos.split('"')
+		nombre = datos_proyecto[1]
+		descripcion = datos_proyecto[3]
+		autor = datos_proyecto[5]
+		prioridad = datos_proyecto[7]
+		
+		with open('proyectos_activos.dsmp') as archivo:
+			temp = json.load(archivo)['proyectos']
+			datos_añadir = {
+				"nombre": nombre,
+				"descripcion": descripcion,
+				"autor": autor,
+				"prioridad": prioridad
+			}
+			temp.append(datos_añadir)
+			datos_despues = {"proyectos": temp}
+			
+		with open('proyectos_activos.dsmp', 'w') as archivo:
+			json.dump(datos_despues, archivo)
+		
+		resultado_embed = discord.Embed(
+			title='¡Proyecto nuevo!',
+			description='El proyecto {} ha sido añadido a $proyectos.'.format(nombre),
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
 @client.command(name='proyectos', pass_context=True)
 async def proyectos(context):
 	with open('proyectos_activos.dsmp') as archivo:
