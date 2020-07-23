@@ -9,7 +9,7 @@ import minestat
 from discord.ext.commands import Bot
 from mcstatus import MinecraftServer
 
-client = Bot(command_prefix=constantes.PREFIX)
+client = Bot(command_prefix=constantes.PREFIX, case_insensitive=True)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 VERSION = '1.5'
@@ -66,7 +66,141 @@ async def on_ready():
 	print('Logueado como {}'.format(client.user))
 	print('Versión de Discord.py: {}'.format(discord.__version__))
 	print('-----------------------------------------------')
+
+
+@client.command(name='limpiarproyectos', pass_context=True)
+async def limpiarproyectos(context):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
 	
+	if administrador_proyectos in context.author.roles:
+		open("proyectos_activos.dsmp", "w").write(
+			json.dumps({"proyectos": []})
+		)
+		
+		resultado_embed = discord.Embed(
+			title='¡Los proyectos han sido limpiados!',
+			description='Todos los proyectos fueron eliminados.',
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
+@client.command(name='terminarproyecto', pass_context=True)
+async def terminarproyecto(context, *, argumento):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
+	
+	if administrador_proyectos in context.author.roles:
+		nombre = argumento.split('"')[1]
+		obj = json.load(open('proyectos_activos.dsmp'))['proyectos']
+		
+		for i in range(len(obj)):
+			if obj[i]['nombre'] == nombre:
+				obj.pop(i)
+				break
+		
+		open("proyectos_activos.dsmp", "w").write(
+			json.dumps({"proyectos": obj})
+		)
+		
+		resultado_embed = discord.Embed(
+			title='¡Proyecto terminado!',
+			description='El proyecto {} ha sido terminado.'.format(nombre),
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
+@client.command(name='añadirproyecto', pass_context=True)
+async def añadirproyecto(context, *, argumentos):
+	administrador_proyectos = discord.utils.get(context.guild.roles, name='Administrador de proyectos')
+	
+	if administrador_proyectos in context.author.roles:
+		datos_proyecto = argumentos.split('"')
+		nombre = datos_proyecto[1]
+		descripcion = datos_proyecto[3]
+		autor = datos_proyecto[5]
+		prioridad = datos_proyecto[7]
+		
+		with open('proyectos_activos.dsmp') as archivo:
+			temp = json.load(archivo)['proyectos']
+			datos_añadir = {
+				"nombre": nombre,
+				"descripcion": descripcion,
+				"autor": autor,
+				"prioridad": prioridad
+			}
+			temp.append(datos_añadir)
+			datos_despues = {"proyectos": temp}
+			
+		with open('proyectos_activos.dsmp', 'w') as archivo:
+			json.dump(datos_despues, archivo)
+		
+		resultado_embed = discord.Embed(
+			title='¡Proyecto nuevo!',
+			description='El proyecto {} ha sido añadido a $proyectos.'.format(nombre),
+			color=0x00FF00
+		)
+		await context.message.channel.send(embed=resultado_embed)
+	else:
+		await context.message.delete()
+		error_embed = discord.Embed(
+			title='¡Vaya!',
+			description='¡No tienes permisos para usar este comando, pequeño curioso!',
+			color=0xCC0000
+		)
+		mensaje = await context.message.channel.send(embed=error_embed)
+		await asyncio.sleep(2)
+		await mensaje.delete()
+
+
+@client.command(name='proyectos', pass_context=True)
+async def proyectos(context):
+	with open('proyectos_activos.dsmp') as archivo:
+		proyectos_activos = json.load(archivo)
+		if proyectos_activos['proyectos']:
+			proyectos_activos_string = ''
+			for p in proyectos_activos['proyectos']:
+				nombre_proyecto = p['nombre']
+				descripcion_proyecto = p['descripcion']
+				autor_proyecto = p['autor']
+				prioridad_proyecto = p['prioridad']
+				proyectos_activos_string += '{}:\n\nDescripción: {}\nAutor: {}\nPrioridad: {}\n\n'.format(
+					nombre_proyecto, descripcion_proyecto, autor_proyecto, prioridad_proyecto
+				)
+		else:
+			proyectos_activos_string = 'No hay proyectos activos.'
+
+	estado_embed = discord.Embed(color=0x00FF00)
+	estado_embed.set_thumbnail(url=obtener_logo_servidor())
+
+	estado_embed.add_field(
+		name='Proyectos activos:',
+		value=proyectos_activos_string
+	)
+
+	estado_embed.set_footer(text=footer_embed(context))
+	await context.message.channel.send(embed=estado_embed)
+
 
 @client.command(name='reiniciar', pass_context=True)
 async def reiniciar(context):
@@ -295,7 +429,28 @@ async def comandos(context):
 	)
 	comandos_embed.add_field(
 		name='Mi latencia:',
-		value='$latencia'
+		value='$latencia',
+		inline=False
+	)
+	comandos_embed.add_field(
+		name='Proyectos activos:',
+		value='$proyectos',
+		inline=False
+	)
+	comandos_embed.add_field(
+		name='Añadir un nuevo proyecto:',
+		value='$añadirproyecto "Grinder doble" "Este proyecto da muchas cosas." "DrPuc, Poporonga y Naltrex." "Alta."',
+		inline=False
+	)
+	comandos_embed.add_field(
+		name='Terminar un proyecto:',
+		value='$terminarproyecto "Grinder doble"',
+		inline=False
+	)
+	comandos_embed.add_field(
+		name='Limpiar todos los proyectos:',
+		value='$limpiarproyectos',
+		inline=False
 	)
 	comandos_embed.add_field(
 		name='Proyectos activos:',
@@ -421,7 +576,7 @@ async def limpiar(context, numero):
 
 
 @limpiar.error
-async def limpiar_error(context):
+async def limpiar_error(context, mensaje):
 	await context.message.delete()
 	error_embed = discord.Embed(
 		title='¡Vaya!',
@@ -431,5 +586,31 @@ async def limpiar_error(context):
 	mensaje = await context.message.channel.send(embed=error_embed)
 	await asyncio.sleep(2)
 	await mensaje.delete()
+
+
+@añadirproyecto.error
+async def añadirproyecto_error(context, mensaje):
+	await context.message.delete()
+	error_embed = discord.Embed(
+		title='¡Vaya!',
+		description='Uso correcto del comando: $añadirproyecto (Nombre del proyecto) (Descripción del proyecto) (Autor/es del proyecto) (Prioridad, puede ser Baja, Media o Alta).\n\n$añadirproyecto "Granja de guardianes" "Granja que da mucho lag" "Sugus, Poporonga y Benjathje" "MEDIA"',
+		color=0xCC0000
+	)
+	mensaje = await context.message.channel.send(embed=error_embed)
+	await asyncio.sleep(15)
+	await mensaje.delete()
 	
+	
+@terminarproyecto.error
+async def terminarproyecto_error(context, mensaje):
+	await context.message.delete()
+	error_embed = discord.Embed(
+		title='¡Vaya!',
+		description='Uso correcto del comando: $terminarproyecto (Nombre del proyecto).\n\n$terminarproyecto "Granja de guardianes"',
+		color=0xCC0000
+	)
+	mensaje = await context.message.channel.send(embed=error_embed)
+	await asyncio.sleep(15)
+	await mensaje.delete()
+
 client.run(constantes.TOKEN)
