@@ -9,10 +9,10 @@ import minestat
 from discord.ext.commands import Bot
 from mcstatus import MinecraftServer
 
-client = Bot(command_prefix=constantes.PREFIX)
+client = Bot(command_prefix=constantes.PREFIX, case_insensitive=True)
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-VERSION = '1.4'
+VERSION = '1.5-dev'
 estaba_on = True
 
 
@@ -66,7 +66,36 @@ async def on_ready():
 	print('Logueado como {}'.format(client.user))
 	print('Versión de Discord.py: {}'.format(discord.__version__))
 	print('-----------------------------------------------')
-	
+
+
+@client.command(name='proyectos', pass_context=True)
+async def proyectos(context):
+	with open('proyectos_activos.dsmp') as archivo:
+		proyectos_activos = json.load(archivo)
+		if proyectos_activos['proyectos']:
+			proyectos_activos_string = ''
+			for p in proyectos_activos['proyectos']:
+				nombre_proyecto = p['nombre']
+				descripcion_proyecto = p['descripcion']
+				autor_proyecto = p['autor']
+				prioridad_proyecto = p['prioridad']
+				proyectos_activos_string += '{}:\n\nDescripción: {}\nAutor: {}\nPrioridad: {}\n\n'.format(
+					nombre_proyecto, descripcion_proyecto, autor_proyecto, prioridad_proyecto
+				)
+		else:
+			proyectos_activos_string = 'No hay proyectos activos.'
+
+	estado_embed = discord.Embed(color=0x00FF00)
+	estado_embed.set_thumbnail(url=obtener_logo_servidor())
+
+	estado_embed.add_field(
+		name='Proyectos activos:',
+		value=proyectos_activos_string
+	)
+
+	estado_embed.set_footer(text=footer_embed(context))
+	await context.message.channel.send(embed=estado_embed)
+
 
 @client.command(name='reiniciar', pass_context=True)
 async def reiniciar(context):
@@ -405,7 +434,7 @@ async def limpiar(context, numero):
 
 
 @limpiar.error
-async def limpiar_error(context):
+async def limpiar_error(context, mensaje):
 	await context.message.delete()
 	error_embed = discord.Embed(
 		title='¡Vaya!',
@@ -414,6 +443,19 @@ async def limpiar_error(context):
 	)
 	mensaje = await context.message.channel.send(embed=error_embed)
 	await asyncio.sleep(2)
+	await mensaje.delete()
+
+
+@añadirproyecto.error
+async def añadirproyecto_error(context, mensaje):
+	await context.message.delete()
+	error_embed = discord.Embed(
+		title='¡Vaya!',
+		description='Uso correcto del comando: $añadirproyecto (Nombre del proyecto) (Descripción del proyecto) (Autor/es del proyecto) (Prioridad, puede ser Baja, Media o Alta).\n\n$añadirproyecto "Granja de guardianes" "Granja que da mucho lag" "Sugus, Poporonga y Benjathje" "MEDIA"',
+		color=0xCC0000
+	)
+	mensaje = await context.message.channel.send(embed=error_embed)
+	await asyncio.sleep(15)
 	await mensaje.delete()
 	
 client.run(constantes.TOKEN)
